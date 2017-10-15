@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Text.RegularExpressions;
 using System.Linq;
 using DocumentClusteringCore.Stemming;
 
@@ -15,23 +14,27 @@ namespace DocumentClusteringCore.TermFiltering.Implementations {
       this.stemmer = stemmer ?? throw new ArgumentNullException(nameof(stemmer));
     }
 
-    // This will be paralelized so loading the stream into memory by chunks is of utmost importance
     public IEnumerable<string> GetTextTerms(Stream textStream) {
       if (textStream == null) {
         throw new ArgumentNullException(nameof(textStream));
       }
 
-      string text;
-      using (var textReader = new StreamReader(textStream)) {
-        text = textReader.ReadToEnd();
-      }
-
-      var wordMatches = WordRegex.Instance.Matches(text);
       var words = new List<string>();
+      var wordStream = new WordStream();
+      wordStream.WordGenerated += (source, generatedWord) => {
+        words.Add(generatedWord);
+      };
 
-      foreach (Match wordMatch in wordMatches) {
-        var word = wordMatch.Value;
-        words.Add(word);
+      var fileReadEntirely = false;
+      var buffer = new byte[BufferSizeInKB];
+      while (!fileReadEntirely) {
+        var readBytes = textStream.Read(buffer, 0, BufferSizeInKB);
+        fileReadEntirely = readBytes != BufferSizeInKB;
+
+        foreach (var textByte in buffer) {
+          var textCharacter = (char)textByte;
+          wordStream.AddCharacter(textCharacter);
+        }
       }
 
       var filteredWords = words.Except(WordsBlacklist.Instance);
@@ -40,16 +43,39 @@ namespace DocumentClusteringCore.TermFiltering.Implementations {
       return terms;
     }
 
-    private static class WordRegex {
-      private static Regex _instance;
-      public static Regex Instance {
-        get {
-          if (_instance == null) {
-            _instance = new Regex("([a-z]|[A-Z])+");
-          }
+    private class WordStream {
+      private const int UppercaseACode = 65;
+      private const int UppercaseZCode = 90;
 
-          return _instance;
+      private const int LowercaseACode = 97;
+      private const int LowercaseZCode = 122;
+
+      public event EventHandler<string> WordGenerated;
+
+      private List<char> currentWord;
+
+      public WordStream() {
+        currentWord = new List<char>();
+      }
+
+      public void AddCharacter(char character) {
+        if (IsValidWordChar(character)) {
+          currentWord.Add(character);
+        } else {
+          if (currentWord.Any()) {
+            var generatedWord = new String(currentWord.ToArray());
+            WordGenerated?.Invoke(this, generatedWord);
+
+            currentWord.Clear();
+          }
         }
+      }
+
+      private bool IsValidWordChar(char character) {
+        var charCode = (int)character;
+        return
+          (UppercaseACode <= charCode && charCode <= UppercaseZCode) ||
+          (LowercaseACode <= charCode && charCode <= LowercaseZCode);
       }
     }
 
