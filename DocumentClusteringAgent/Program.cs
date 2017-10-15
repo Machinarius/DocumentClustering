@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using DocumentClusteringCore.DocumentParsing;
 using DocumentClusteringCore.DocumentParsing.Implementations;
@@ -12,24 +14,38 @@ namespace DocumentClusteringAgent {
   public static class Program {
     public static void Main(string[] args) {
       if (args.Length < 1) {
-        Console.WriteLine($"Please specify the path to the file to analyze as an argument");
+        Console.WriteLine($"Please specify the path to the directory or file to analyze as an argument");
         return;
       }
 
-      var pathToFile = Path.GetFullPath(args[0]);
-      if (!File.Exists(pathToFile)) {
-        Console.WriteLine($"ERROR: The file '{pathToFile}' does not exist");
+      var pathToTarget = Path.GetFullPath(args[0]);
+      if (!File.Exists(pathToTarget) && !Directory.Exists(pathToTarget)) {
+        Console.WriteLine($"ERROR: No file or directory was found at '{pathToTarget}'");
         Console.ReadKey();
         return;
       }
 
-      Stream fileStream;
-      try {
-        fileStream = File.OpenRead(pathToFile);
-      } catch (Exception) {
-        Console.WriteLine($"ERROR: The file '{pathToFile}' could not be read");
-        Console.ReadKey();
-        return;
+      IEnumerable<string> targetFiles;
+      var targetIsDirectory = (File.GetAttributes(pathToTarget) & FileAttributes.Directory) == FileAttributes.Directory;
+      if (targetIsDirectory) {
+        targetFiles = Directory.GetFiles(pathToTarget);
+      } else {
+        targetFiles = new[] { pathToTarget };
+      }
+
+      var targets = new List<(Stream stream, string name)>();
+      foreach (var filePath in targetFiles) {
+        Stream fileStream;
+        try {
+          fileStream = File.OpenRead(filePath);
+        } catch (Exception) {
+          Console.WriteLine($"ERROR: The file '{pathToTarget}' could not be read");
+          Console.ReadKey();
+          return;
+        }
+
+        var docName = Path.GetFileName(filePath);
+        targets.Add((fileStream, docName));
       }
 
       var diContainer = new Container();
@@ -40,15 +56,24 @@ namespace DocumentClusteringAgent {
       diContainer.RegisterInstance<IWordStemmer>(stemmer);
 
       var docFactory = diContainer.Resolve<IDocumentFactory>();
-      var docName = Path.GetFileName(pathToFile);
-      var document = docFactory.ParseStream(fileStream, docName);
 
-      Console.WriteLine($"Terms and weights for file: {docName}");
-      foreach (var termWeight in document.TermWeights) {
-        Console.WriteLine($"{termWeight.Key}: {termWeight.Value}");
+      var stopWatch = new Stopwatch();
+      stopWatch.Start();
+      foreach (var target in targets) {
+        var document = docFactory.ParseStream(target.stream, target.name);
+
+        Console.WriteLine($"Terms and weights for file: {target.name}");
+        foreach (var termCount in document.TermCounts) {
+          Console.WriteLine($"{termCount.Key}: {termCount.Value}");
+        }
       }
+      stopWatch.Stop();
 
       Console.WriteLine();
+      Console.WriteLine($"Document count: {targets.Count}");
+      Console.WriteLine($"Time ellapsed: {stopWatch.Elapsed.TotalSeconds} seconds");
+
+      Console.ReadKey();
       Console.ReadKey();
     }
   }
