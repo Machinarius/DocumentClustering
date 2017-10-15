@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "DocumentClusteringAgent": {
+      "commandName": "Project",
+      "commandLineArgs": "test.txt"
+    }
+  }
+}
