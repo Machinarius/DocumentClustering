@@ -63,7 +63,7 @@ namespace DocumentClusteringAgent {
         var document = docFactory.ParseStream(target.stream, target.name);
 
         Console.WriteLine($"Terms and weights for file: {target.name}");
-        foreach (var termCount in document.TermCounts) {
+        foreach (var termCount in document.NormalizedTermWeights) {
           Console.WriteLine($"{termCount.Key}: {termCount.Value}");
         }
       }
@@ -72,8 +72,7 @@ namespace DocumentClusteringAgent {
       Console.WriteLine();
       Console.WriteLine($"Document count: {targets.Count}");
       Console.WriteLine($"Time ellapsed: {stopWatch.Elapsed.TotalSeconds} seconds");
-
-      Console.ReadKey();
+      
       Console.ReadKey();
     }
   }
