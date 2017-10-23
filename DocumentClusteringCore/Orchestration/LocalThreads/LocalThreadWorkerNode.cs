@@ -40,7 +40,8 @@ namespace DocumentClusteringCore.Orchestration.LocalThreads {
         Name = "Worker_" + id
       };
 
-      assignments = messageHub.WorkAssignemnts;
+      assignments = messageHub.WorkAssignemnts
+        .Where(assignment => assignment.NodeId == id);
     }
 
     public void Start() {
