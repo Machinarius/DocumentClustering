@@ -12,7 +12,7 @@ namespace DocumentClusteringCore.Messaging.Implementations {
       documentGeneratedSubject = new Subject<Document>();
     }
 
-    public void PostDocumentGeneratedMessage(Document document) {
+    public void PostTokenizedDocument(Document document) {
       if (document == null) {
         throw new ArgumentNullException(nameof(document));
       }

@@ -5,15 +5,15 @@ using System.Linq;
 using DocumentClusteringCore.Models;
 using DocumentClusteringCore.TermFiltering;
 
-namespace DocumentClusteringCore.DocumentParsing.Implementations {
-  public class DefaultDocumentFactory : IDocumentFactory {
+namespace DocumentClusteringCore.Tokenization.Implementations {
+  public class DefaultDocumentTokenizer : IDocumentTokenizer {
     private readonly ITermSieve termSieve;
 
-    public DefaultDocumentFactory(ITermSieve termSieve) {
+    public DefaultDocumentTokenizer(ITermSieve termSieve) {
       this.termSieve = termSieve ?? throw new ArgumentNullException(nameof(termSieve));
     }
 
-    public Document ParseStream(Stream textStream, string name) {
+    public Document TokenizeStream(Stream textStream, string name) {
       if (textStream == null) {
         throw new ArgumentNullException(nameof(textStream));
       }

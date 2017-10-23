@@ -2,8 +2,8 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using DocumentClusteringCore.DocumentParsing;
-using DocumentClusteringCore.DocumentParsing.Implementations;
+using DocumentClusteringCore.Tokenization;
+using DocumentClusteringCore.Tokenization.Implementations;
 using DocumentClusteringCore.Stemming;
 using DocumentClusteringCore.Stemming.Implementations;
 using DocumentClusteringCore.TermFiltering;
@@ -49,18 +49,18 @@ namespace DocumentClusteringAgent {
       }
 
       var diContainer = new Container();
-      diContainer.Register<IDocumentFactory, DefaultDocumentFactory>();
+      diContainer.Register<IDocumentTokenizer, DefaultDocumentFactory>();
       diContainer.Register<ITermSieve, DefaultTermSieve>();
 
       var stemmer = new CachedWordStemmer(new PorterWordStemmer());
       diContainer.RegisterInstance<IWordStemmer>(stemmer);
 
-      var docFactory = diContainer.Resolve<IDocumentFactory>();
+      var docFactory = diContainer.Resolve<IDocumentTokenizer>();
 
       var stopWatch = new Stopwatch();
       stopWatch.Start();
       foreach (var target in targets) {
-        var document = docFactory.ParseStream(target.stream, target.name);
+        var document = docFactory.TokenizeStream(target.stream, target.name);
 
         Console.WriteLine($"Terms and weights for file: {target.name}");
         foreach (var termCount in document.NormalizedTermWeights) {
