@@ -5,11 +5,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="TermFiltering\Implementations\WordsBlacklist.txt" />
+    <None Remove="TermFiltering\Default\WordsBlacklist.txt" />
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="TermFiltering\Implementations\WordsBlacklist.txt">
+    <EmbeddedResource Include="TermFiltering\Default\WordsBlacklist.txt">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </EmbeddedResource>
   </ItemGroup>

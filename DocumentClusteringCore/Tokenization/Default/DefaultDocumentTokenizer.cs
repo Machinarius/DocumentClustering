@@ -5,7 +5,7 @@ using System.Linq;
 using DocumentClusteringCore.Models;
 using DocumentClusteringCore.TermFiltering;
 
-namespace DocumentClusteringCore.Tokenization.Implementations {
+namespace DocumentClusteringCore.Tokenization.Default {
   public class DefaultDocumentTokenizer : IDocumentTokenizer {
     private readonly ITermSieve termSieve;
 

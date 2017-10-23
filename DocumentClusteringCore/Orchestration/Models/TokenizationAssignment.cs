@@ -1,7 +1,7 @@
 ﻿using System;
 
 namespace DocumentClusteringCore.Orchestration.Models {
-  internal class TokenizationAssignment : WorkAssignment {
+  public class TokenizationAssignment : WorkAssignment {
     public string Filepath { get; }
 
     public TokenizationAssignment(int nodeId, string filename) : base(nodeId) {

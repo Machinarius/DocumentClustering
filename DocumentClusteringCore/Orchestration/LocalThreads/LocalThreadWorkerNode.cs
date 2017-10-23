@@ -25,19 +25,22 @@ namespace DocumentClusteringCore.Orchestration.LocalThreads {
     private Thread workerThread;
     private bool keepWorking;
 
-    public LocalThreadWorkerNode(int id, IMessageHub messageHub, IMessageSink messageSink, 
-                                 IDocumentTokenizer documentTokenizer, IWeightNormalizer weightNormalizer, 
+    public LocalThreadWorkerNode(int id, IMessageHub messageHub, IMessageSink messageSink,
+                                 IDocumentTokenizer documentTokenizer, IWeightNormalizer weightNormalizer,
                                  ISimilarityComparer similarityComparer) {
+      this.id = id;
+
       this.messageHub = messageHub ?? throw new ArgumentNullException(nameof(messageHub));
       this.messageSink = messageSink ?? throw new ArgumentNullException(nameof(messageSink));
       this.documentTokenizer = documentTokenizer ?? throw new ArgumentNullException(nameof(documentTokenizer));
       this.weightNormalizer = weightNormalizer ?? throw new ArgumentNullException(nameof(weightNormalizer));
       this.similarityComparer = similarityComparer ?? throw new ArgumentNullException(nameof(similarityComparer));
+      
+      workerThread = new Thread(WorkLoop) {
+        Name = "Worker_" + id
+      };
 
-      workerThread = new Thread(WorkLoop);
-
-      assignments = messageHub.WorkAssignemnts
-        .Where(assignment => assignment.NodeId == id);
+      assignments = messageHub.WorkAssignemnts;
     }
 
     public void Start() {
@@ -53,10 +56,12 @@ namespace DocumentClusteringCore.Orchestration.LocalThreads {
     private void WorkLoop() {
       NodeAvailabilityChange availabilityChange;
 
+      var assignmentsStream = assignments.ToEnumerable();
+
       availabilityChange = new NodeAvailabilityChange(id, true);
       messageSink.PostNodeAvailabilityChange(availabilityChange);
 
-      foreach (var assignment in assignments.Next()) {
+      foreach (var assignment in assignmentsStream) {
         if (!keepWorking) {
           return;
         }

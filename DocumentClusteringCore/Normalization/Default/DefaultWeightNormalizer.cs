@@ -5,7 +5,7 @@ using System.Linq;
 using DocumentClusteringCore.Messaging;
 using DocumentClusteringCore.Models;
 
-namespace DocumentClusteringCore.Normalization.Implementations {
+namespace DocumentClusteringCore.Normalization.Default {
   public class DefaultWeightNormalizer : IWeightNormalizer {
     private Dictionary<string, HashSet<string>> termDocumentAppearances;
 

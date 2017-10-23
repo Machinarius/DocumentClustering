@@ -36,10 +36,12 @@ namespace DocumentClusteringCore.Orchestration.LocalThreads {
 
       workTCS = new TaskCompletionSource<int>();
 
-      filepathsToTokenize = new Queue<string>(options.Filenames);
+      filepathsToTokenize = new Queue<string>(options.FilePaths);
 
       generatedDocuments = new ConcurrentBag<Document>();
       documentsToNormalize = new ConcurrentQueue<Document>();
+
+      workSchedulingLock = new object();
     }
 
     public Task ExecuteWorkAsync() {
@@ -52,7 +54,12 @@ namespace DocumentClusteringCore.Orchestration.LocalThreads {
       }
 
       workerNodes = Enumerable.Range(0, nodeCount)
-        .Select(id => nodeFactory.CreateNode(id)).ToArray();
+        .Select(id => {
+          var node = nodeFactory.CreateNode(id);
+          node.Start();
+
+          return node;
+        }).ToArray();
 
       return workTCS.Task;
     }
@@ -62,7 +69,8 @@ namespace DocumentClusteringCore.Orchestration.LocalThreads {
         throw new ArgumentNullException(nameof(generatedDocument));
       }
 
-
+      generatedDocuments.Add(generatedDocument);
+      documentsToNormalize.Enqueue(generatedDocument);
     }
 
     private void OnNodeAvailabilityChanged(NodeAvailabilityChange availabilityChange) {
@@ -75,10 +83,10 @@ namespace DocumentClusteringCore.Orchestration.LocalThreads {
       }
     }
 
-    private object scheduleLock;
+    private object workSchedulingLock;
 
     private void ScheduleWork(int nodeId) {
-      lock (scheduleLock) {
+      lock (workSchedulingLock) {
         if (filepathsToTokenize.Any()) {
           var nextFilepath = filepathsToTokenize.Dequeue();
           var assignment = new TokenizationAssignment(nodeId, nextFilepath);
@@ -87,6 +95,7 @@ namespace DocumentClusteringCore.Orchestration.LocalThreads {
           return;
         }
 
+        workTCS.SetResult(0);
       }
     }
   }

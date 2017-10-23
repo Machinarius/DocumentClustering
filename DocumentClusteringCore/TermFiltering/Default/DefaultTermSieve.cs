@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 using DocumentClusteringCore.Stemming;
 
-namespace DocumentClusteringCore.TermFiltering.Implementations {
+namespace DocumentClusteringCore.TermFiltering.Default {
   public class DefaultTermSieve : ITermSieve {
     private const int BufferSizeInKB = 4096;
 
@@ -102,7 +102,7 @@ namespace DocumentClusteringCore.TermFiltering.Implementations {
 
             var blackList = new HashSet<string>();
             foreach (var line in blacklistLines) {
-              var word = line.Trim().TrimStart('\r').TrimEnd('\n');
+              var word = line.Trim();
               blackList.Add(word);
             }
 

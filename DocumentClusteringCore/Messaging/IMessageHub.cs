@@ -5,7 +5,8 @@ using DocumentClusteringCore.Orchestration.Models;
 namespace DocumentClusteringCore.Messaging {
   public interface IMessageHub {
     IObservable<Document> DocumentGenerated { get; }
-    IObservable<NodeAvailabilityChange> NodeAvailabilityChanges { get; }
+    IObservable<Document> DocumentNormalized { get; }
     IObservable<WorkAssignment> WorkAssignemnts { get; }
+    IObservable<NodeAvailabilityChange> NodeAvailabilityChanges { get; }
   }
 }

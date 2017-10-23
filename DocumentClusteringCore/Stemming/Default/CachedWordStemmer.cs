@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace DocumentClusteringCore.Stemming.Implementations {
+namespace DocumentClusteringCore.Stemming.Default {
   public class CachedWordStemmer : IWordStemmer {
     private readonly IWordStemmer backend;
     private readonly Dictionary<string, string> cache;

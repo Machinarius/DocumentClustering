@@ -2,17 +2,22 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using DocumentClusteringCore.Tokenization;
-using DocumentClusteringCore.Tokenization.Implementations;
-using DocumentClusteringCore.Stemming;
-using DocumentClusteringCore.Stemming.Implementations;
-using DocumentClusteringCore.TermFiltering;
-using DocumentClusteringCore.TermFiltering.Implementations;
+using System.Linq;
+using System.Threading.Tasks;
+using DocumentClusteringCore.Configuration;
+using DocumentClusteringCore.Messaging.InProcess;
+using DocumentClusteringCore.Normalization.Default;
+using DocumentClusteringCore.Orchestration;
+using DocumentClusteringCore.Orchestration.LocalThreads;
+using DocumentClusteringCore.SimilarityComparison.Euclidean;
+using DocumentClusteringCore.Stemming.Default;
+using DocumentClusteringCore.TermFiltering.Default;
+using DocumentClusteringCore.Tokenization.Default;
 using DryIoc;
 
 namespace DocumentClusteringAgent {
   public static class Program {
-    public static void Main(string[] args) {
+    public static async Task Main(string[] args) {
       if (args.Length < 1) {
         Console.WriteLine($"Please specify the path to the directory or file to analyze as an argument");
         return;
@@ -28,49 +33,34 @@ namespace DocumentClusteringAgent {
       IEnumerable<string> targetFiles;
       var targetIsDirectory = (File.GetAttributes(pathToTarget) & FileAttributes.Directory) == FileAttributes.Directory;
       if (targetIsDirectory) {
-        targetFiles = Directory.GetFiles(pathToTarget);
+        targetFiles = Directory.GetFiles(pathToTarget).Select(Path.GetFullPath).ToArray();
       } else {
-        targetFiles = new[] { pathToTarget };
+        targetFiles = new[] { pathToTarget }.Select(Path.GetFullPath).ToArray();
       }
 
-      var targets = new List<(Stream stream, string name)>();
-      foreach (var filePath in targetFiles) {
-        Stream fileStream;
-        try {
-          fileStream = File.OpenRead(filePath);
-        } catch (Exception) {
-          Console.WriteLine($"ERROR: The file '{pathToTarget}' could not be read");
-          Console.ReadKey();
-          return;
-        }
+      var options = new Options(0, targetFiles);
 
-        var docName = Path.GetFileName(filePath);
-        targets.Add((fileStream, docName));
-      }
+      var containerRules = Rules.Default
+        .WithConcreteTypeDynamicRegistrations()
+        .WithAutoConcreteTypeResolution();
 
-      var diContainer = new Container();
-      diContainer.Register<IDocumentTokenizer, DefaultDocumentFactory>();
-      diContainer.Register<ITermSieve, DefaultTermSieve>();
+      var diContainer = new Container(containerRules);
+      diContainer.UseInProcessMessaging();
+      diContainer.UseDefaultTokenization();
+      diContainer.UseCachedPorterStemming();
+      diContainer.UseLocalThreadWorkers();
+      diContainer.UseDefaultTermFiltering();
+      diContainer.UseEuclideanSimilarityComparison();
+      diContainer.UseDefaultWeightNormalization();
+      diContainer.RegisterInstance(options);
 
-      var stemmer = new CachedWordStemmer(new PorterWordStemmer());
-      diContainer.RegisterInstance<IWordStemmer>(stemmer);
-
-      var docFactory = diContainer.Resolve<IDocumentTokenizer>();
-
+      var worker = diContainer.Resolve<IWorkOrchestrator>();
       var stopWatch = new Stopwatch();
-      stopWatch.Start();
-      foreach (var target in targets) {
-        var document = docFactory.TokenizeStream(target.stream, target.name);
 
-        Console.WriteLine($"Terms and weights for file: {target.name}");
-        foreach (var termCount in document.NormalizedTermWeights) {
-          Console.WriteLine($"{termCount.Key}: {termCount.Value}");
-        }
-      }
+      stopWatch.Start();
+      await worker.ExecuteWorkAsync();
       stopWatch.Stop();
 
-      Console.WriteLine();
-      Console.WriteLine($"Document count: {targets.Count}");
       Console.WriteLine($"Time ellapsed: {stopWatch.Elapsed.TotalSeconds} seconds");
       
       Console.ReadKey();

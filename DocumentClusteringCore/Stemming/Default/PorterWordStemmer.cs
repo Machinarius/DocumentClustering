@@ -1,7 +1,7 @@
 ﻿using System;
 using PorterStemmer;
 
-namespace DocumentClusteringCore.Stemming.Implementations {
+namespace DocumentClusteringCore.Stemming.Default {
   public class PorterWordStemmer : IWordStemmer {
     public string StemString(string target) {
       if (string.IsNullOrEmpty(target)) {

@@ -24,7 +24,7 @@ namespace DocumentClusteringCore.Orchestration.LocalThreads {
     }
 
     internal LocalThreadWorkerNode CreateNode(int id) {
-      return new LocalThreadWorkerNode(id, messageHub, messageSink);
+      return new LocalThreadWorkerNode(id, messageHub, messageSink, documentTokenizer, weightNormalizer, similarityComparer);
     }
   }
 }
