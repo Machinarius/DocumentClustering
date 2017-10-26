@@ -53,5 +53,13 @@ namespace DocumentClusteringCore.Messaging.InProcess {
 
       assignmentsSubject.OnNext(assignment);
     }
+
+    public void PostShutdownAssignment(ShutdownAssignment assignment) {
+      if (assignment == null) {
+        throw new ArgumentNullException(nameof(assignment));
+      }
+
+      assignmentsSubject.OnNext(assignment);
+    }
   }
 }

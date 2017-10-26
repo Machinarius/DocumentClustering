@@ -1,10 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Collections.Concurrent;
 
 namespace DocumentClusteringCore.Stemming.Default {
   public class CachedWordStemmer : IWordStemmer {
     private readonly IWordStemmer backend;
-    private readonly Dictionary<string, string> cache;
+    private readonly ConcurrentDictionary<string, string> cache;
 
     public CachedWordStemmer(IWordStemmer backend) {
       this.backend = backend ?? throw new ArgumentNullException(nameof(backend));
@@ -12,7 +12,7 @@ namespace DocumentClusteringCore.Stemming.Default {
         throw new ArgumentException("Nesting cached word stemmers is not allowed", nameof(backend));
       }
 
-      cache = new Dictionary<string, string>();
+      cache = new ConcurrentDictionary<string, string>();
     }
 
     public string StemString(string target) {

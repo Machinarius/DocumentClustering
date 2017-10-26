@@ -14,10 +14,17 @@ using DocumentClusteringCore.Stemming.Default;
 using DocumentClusteringCore.TermFiltering.Default;
 using DocumentClusteringCore.Tokenization.Default;
 using DryIoc;
+using Nito.AsyncEx;
 
 namespace DocumentClusteringAgent {
   public static class Program {
-    public static async Task Main(string[] args) {
+    public static void Main(string[] args) {
+      Trace.Listeners.Add(new TextWriterTraceListener(Console.Out));
+
+      AsyncContext.Run(() => AsyncMain(args));
+    }
+
+    public static async Task AsyncMain(string[] args) {
       if (args.Length < 1) {
         Console.WriteLine($"Please specify the path to the directory or file to analyze as an argument");
         return;

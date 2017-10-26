@@ -7,5 +7,6 @@ namespace DocumentClusteringCore.Messaging {
     void PostNormalizedDocument(Document document);
     void PostNodeAvailabilityChange(NodeAvailabilityChange availabilityChange);
     void PostTokenizationAssignment(TokenizationAssignment assignment);
+    void PostShutdownAssignment(ShutdownAssignment shutdownAssingment);
   }
 }

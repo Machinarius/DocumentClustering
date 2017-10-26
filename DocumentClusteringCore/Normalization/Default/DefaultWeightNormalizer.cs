@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -7,7 +8,8 @@ using DocumentClusteringCore.Models;
 
 namespace DocumentClusteringCore.Normalization.Default {
   public class DefaultWeightNormalizer : IWeightNormalizer {
-    private Dictionary<string, HashSet<string>> termDocumentAppearances;
+    private readonly ConcurrentBag<Document> generatedDocuments;
+    private readonly ConcurrentDictionary<string, ConcurrentBag<string>> termDocumentAppearances;
 
     private readonly IMessageHub messageHub;
 
@@ -15,11 +17,9 @@ namespace DocumentClusteringCore.Normalization.Default {
       this.messageHub = messageHub ?? throw new ArgumentNullException(nameof(messageHub));
       this.messageHub.DocumentGenerated.Subscribe(OnDocumentGenerated);
 
-      termDocumentAppearances = new Dictionary<string, HashSet<string>>();
-      generatedDocuments = new List<Document>();
+      termDocumentAppearances = new ConcurrentDictionary<string, ConcurrentBag<string>>();
+      generatedDocuments = new ConcurrentBag<Document>();
     }
-
-    private List<Document> generatedDocuments;
 
     private void OnDocumentGenerated(Document generatedDocument) {
       if (generatedDocument == null) {
@@ -28,7 +28,7 @@ namespace DocumentClusteringCore.Normalization.Default {
       
       foreach (var term in generatedDocument.TermCounts) {
         if (!termDocumentAppearances.ContainsKey(term.Key)) {
-          termDocumentAppearances[term.Key] = new HashSet<string>();
+          termDocumentAppearances[term.Key] = new ConcurrentBag<string>();
         }
 
         termDocumentAppearances[term.Key].Add(generatedDocument.Name);

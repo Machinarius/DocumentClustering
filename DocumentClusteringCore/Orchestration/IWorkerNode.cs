@@ -1,5 +1,9 @@
-﻿namespace DocumentClusteringCore.Orchestration {
+﻿using System.Threading.Tasks;
+
+namespace DocumentClusteringCore.Orchestration {
   public interface IWorkerNode {
-    long Id { get; }
+    int Id { get; }
+    Task StartAsync();
+    Task StopAsync();
   }
 }
