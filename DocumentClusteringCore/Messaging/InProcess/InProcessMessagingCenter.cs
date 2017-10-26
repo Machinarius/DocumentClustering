@@ -61,5 +61,13 @@ namespace DocumentClusteringCore.Messaging.InProcess {
 
       assignmentsSubject.OnNext(assignment);
     }
+
+    public void PostNormalizationAssignment(NormalizationAssignment assignment) {
+      if (assignment == null) {
+        throw new ArgumentNullException(nameof(assignment));
+      }
+
+      assignmentsSubject.OnNext(assignment);
+    }
   }
 }

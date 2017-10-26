@@ -8,7 +8,7 @@ namespace DocumentClusteringCore.Orchestration.LocalThreads {
         throw new ArgumentNullException(nameof(diContainer));
       }
 
-      diContainer.Register<IWorkerNodeFactory, LocalThreadWorkerNodeFactory>();
+      diContainer.Register<IWorkerNodesLifecycleManager, LocalThreadWorkerNodeFactory>();
       diContainer.Register<IWorkOrchestrator, DefaultWorkOrchestrator>();
     }
   }

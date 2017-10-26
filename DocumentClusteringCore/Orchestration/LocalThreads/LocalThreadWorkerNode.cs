@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
+using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -53,7 +54,7 @@ namespace DocumentClusteringCore.Orchestration.LocalThreads {
 
     private async Task WaitUntilWorkIsDoneAsync() {
       assignmentsSubscription = assignments
-        //.SubscribeOn(SynchronizationContext.Current)
+        .ObserveOn(Scheduler.Immediate)
         .Subscribe(ExecuteAssignment);
 
       PostAvailability(true);

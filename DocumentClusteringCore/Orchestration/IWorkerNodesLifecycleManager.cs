@@ -2,7 +2,8 @@
 using System.Threading.Tasks;
 
 namespace DocumentClusteringCore.Orchestration {
-  public interface IWorkerNodeFactory {
+  public interface IWorkerNodesLifecycleManager {
     Task<IEnumerable<IWorkerNode>> CreateWorkerNodesAsync();
+    Task StopWorkerNodesAsync();
   }
 }

@@ -2,8 +2,8 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Reactive.Concurrency;
 using System.Reactive.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using DocumentClusteringCore.Configuration;
 using DocumentClusteringCore.Messaging;
@@ -16,7 +16,7 @@ namespace DocumentClusteringCore.Orchestration.LocalThreads {
 
     private readonly IMessageHub messageHub;
     private readonly IMessageSink messageSink;
-    private readonly IWorkerNodeFactory nodeFactory;
+    private readonly IWorkerNodesLifecycleManager nodesManager;
     private readonly List<IDisposable> subscriptions;
 
     private readonly Queue<string> filepathsToTokenize;
@@ -24,41 +24,36 @@ namespace DocumentClusteringCore.Orchestration.LocalThreads {
     private readonly List<Document> generatedDocuments;
     private readonly Queue<Document> documentsToNormalize;
 
+    private readonly TaskCompletionSource<int> tokenizationDoneTCS;
+
     private IWorkerNode[] workerNodes;
-    
-    private readonly TaskCompletionSource<int> workersReadyTCS;
 
     public DefaultWorkOrchestrator(Options options, IMessageHub messageHub, IMessageSink messageSink,
-                                       IWorkerNodeFactory nodeFactory) {
+                                   IWorkerNodesLifecycleManager nodesManager) {
       this.options = options ?? throw new ArgumentNullException(nameof(options));
       this.messageHub = messageHub ?? throw new ArgumentNullException(nameof(messageHub));
       this.messageSink = messageSink ?? throw new ArgumentNullException(nameof(messageSink));
-      this.nodeFactory = nodeFactory ?? throw new ArgumentNullException(nameof(nodeFactory));
+      this.nodesManager = nodesManager ?? throw new ArgumentNullException(nameof(nodesManager));
       subscriptions = new List<IDisposable>();
-
-      workersReadyTCS = new TaskCompletionSource<int>();
 
       filepathsToTokenize = new Queue<string>(options.FilePaths);
 
       generatedDocuments = new List<Document>(filepathsToTokenize.Count());
       documentsToNormalize = new Queue<Document>(filepathsToTokenize.Count());
+
+      tokenizationDoneTCS = new TaskCompletionSource<int>();
     }
 
     public async Task ExecuteWorkAsync() {
       subscriptions.Add(messageHub.DocumentGenerated
+        .ObserveOn(Scheduler.Immediate)
         //.SubscribeOn(SynchronizationContext.Current) // TODO: Find out why this doesn't work
         .Subscribe(OnDocumentGenerated));
 
       subscriptions.Add(messageHub.NodeAvailabilityChanges
+        .ObserveOn(Scheduler.Default)
         //.SubscribeOn(SynchronizationContext.Current)
         .Subscribe(OnNodeAvailabilityChanged));
-
-      var nodes = await nodeFactory.CreateWorkerNodesAsync();
-      workerNodes = nodes.ToArray();
-
-      foreach (var node in workerNodes) {
-        await node.StartAsync();
-      }
 
       await WorkLoopAsync();
     }
@@ -70,27 +65,23 @@ namespace DocumentClusteringCore.Orchestration.LocalThreads {
 
       generatedDocuments.Add(generatedDocument);
       documentsToNormalize.Enqueue(generatedDocument);
+
+      if (!filepathsToTokenize.Any()) {
+        tokenizationDoneTCS.SetResult(0);
+      }
     }
-
-    private int readyWorkersAmount;
-
+    
     private void OnNodeAvailabilityChanged(NodeAvailabilityChange availabilityChange) {
       if (availabilityChange == null) {
         throw new ArgumentNullException(nameof(availabilityChange));
       }
 
       Debug.WriteLine($"Availability change: node {availabilityChange.NodeId} - {availabilityChange.NodeAvailable}");
-
-      if (readyWorkersAmount < workerNodes.Length) {
-        readyWorkersAmount++;
-        if (readyWorkersAmount == workerNodes.Length) {
-          workersReadyTCS.SetResult(0);
-        }
-      }
     }
 
     private async Task WorkLoopAsync() {
-      await workersReadyTCS.Task;
+      var nodes = await nodesManager.CreateWorkerNodesAsync();
+      workerNodes = nodes.ToArray();
 
       var nodesEnumerator = nodesStream().GetEnumerator();
       nodesEnumerator.MoveNext();
@@ -104,7 +95,7 @@ namespace DocumentClusteringCore.Orchestration.LocalThreads {
         }
       }
 
-      await StopWorkersAsync();
+      await nodesManager.StopWorkerNodesAsync();
       
       IEnumerable<Func<int, Task<bool>>> assignmentsStream() {
         while (filepathsToTokenize.Any()) {
@@ -118,7 +109,18 @@ namespace DocumentClusteringCore.Orchestration.LocalThreads {
           }; 
         }
 
+        yield return (nodeId) => tokenizationDoneTCS.Task.ContinueWith(_ => false);
+        
+        while (documentsToNormalize.Any()) {
+          var nextDocument = documentsToNormalize.Dequeue();
 
+          yield return (nodeId) => {
+            var assignment = new NormalizationAssignment(nodeId, nextDocument);
+            messageSink.PostNormalizationAssignment(assignment);
+
+            return Task.FromResult(true);
+          };
+        }
 
         yield break;
       }
@@ -135,17 +137,6 @@ namespace DocumentClusteringCore.Orchestration.LocalThreads {
           yield return currentNodeId;
         }
       }
-    }
-
-    private async Task StopWorkersAsync() {
-      if (workerNodes == null) {
-        return;
-      }
-
-      foreach (var node in workerNodes) {
-        await node.StopAsync();
-      }
-      workerNodes = null;
     }
   }
 }
