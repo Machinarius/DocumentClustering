@@ -1,4 +1,5 @@
 ﻿using System;
+using DocumentClusteringCore.Orchestration.Default;
 using DryIoc;
 
 namespace DocumentClusteringCore.Orchestration.LocalThreads {
@@ -8,7 +9,7 @@ namespace DocumentClusteringCore.Orchestration.LocalThreads {
         throw new ArgumentNullException(nameof(diContainer));
       }
 
-      diContainer.Register<IWorkerNodesLifecycleManager, LocalThreadWorkerNodeFactory>();
+      diContainer.Register<IWorkerNodesLifecycleManager, LocalThreadWorkerNodesLifecycleManager>();
       diContainer.Register<IWorkOrchestrator, DefaultWorkOrchestrator>();
     }
   }

@@ -1,45 +1,21 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
-using DocumentClusteringCore.Messaging;
 using DocumentClusteringCore.Models;
 
 namespace DocumentClusteringCore.Normalization.Default {
   public class DefaultWeightNormalizer : IWeightNormalizer {
-    private readonly ConcurrentBag<Document> generatedDocuments;
-    private readonly ConcurrentDictionary<string, ConcurrentBag<string>> termDocumentAppearances;
-
-    private readonly IMessageHub messageHub;
-
-    public DefaultWeightNormalizer(IMessageHub messageHub) {
-      this.messageHub = messageHub ?? throw new ArgumentNullException(nameof(messageHub));
-      this.messageHub.DocumentGenerated.Subscribe(OnDocumentGenerated);
-
-      termDocumentAppearances = new ConcurrentDictionary<string, ConcurrentBag<string>>();
-      generatedDocuments = new ConcurrentBag<Document>();
-    }
-
-    private void OnDocumentGenerated(Document generatedDocument) {
-      if (generatedDocument == null) {
-        throw new ArgumentNullException(nameof(generatedDocument));
-      }
-      
-      foreach (var term in generatedDocument.TermCounts) {
-        if (!termDocumentAppearances.ContainsKey(term.Key)) {
-          termDocumentAppearances[term.Key] = new ConcurrentBag<string>();
-        }
-
-        termDocumentAppearances[term.Key].Add(generatedDocument.Name);
-      }
-
-      generatedDocuments.Add(generatedDocument);
-    }
+    private int amountOfDocuments;
+    private IDictionary<string, int> termDocumentAppearances;
 
     public void NormalizeDocument(Document document) {
       if (document == null) {
         throw new ArgumentNullException(nameof(document));
+      }
+
+      if (termDocumentAppearances == null) {
+        throw new InvalidOperationException("You must call Configure first");
       }
 
       var vectorNorm = Math.Sqrt(document.TermCounts.Select(kvp => Math.Sqrt(kvp.Value)).Sum());
@@ -52,11 +28,16 @@ namespace DocumentClusteringCore.Normalization.Default {
 
       var inverseWeightsDictionary = new Dictionary<string, double>();
       foreach (var term in document.TermCounts) {
-        var inverseTermWeight = term.Value * Math.Log(generatedDocuments.Count / termDocumentAppearances[term.Key].Count());
+        var inverseTermWeight = term.Value * Math.Log(amountOfDocuments / termDocumentAppearances[term.Key]);
         inverseWeightsDictionary[term.Key] = inverseTermWeight;
       }
 
       document.InverseSetFrequencyWeights = new ReadOnlyDictionary<string, double>(inverseWeightsDictionary);
+    }
+
+    public void Configure(int amountOfDocuments, IDictionary<string, int> termDocumentAppearances) {
+      this.termDocumentAppearances = termDocumentAppearances ?? throw new ArgumentNullException(nameof(termDocumentAppearances));
+      this.amountOfDocuments = amountOfDocuments;
     }
   }
 }

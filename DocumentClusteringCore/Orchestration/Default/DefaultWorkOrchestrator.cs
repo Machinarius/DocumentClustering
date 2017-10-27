@@ -10,7 +10,7 @@ using DocumentClusteringCore.Messaging;
 using DocumentClusteringCore.Models;
 using DocumentClusteringCore.Orchestration.Models;
 
-namespace DocumentClusteringCore.Orchestration.LocalThreads {
+namespace DocumentClusteringCore.Orchestration.Default {
   public class DefaultWorkOrchestrator : IWorkOrchestrator {
     private readonly Options options;
 
@@ -23,6 +23,7 @@ namespace DocumentClusteringCore.Orchestration.LocalThreads {
 
     private readonly List<Document> generatedDocuments;
     private readonly Queue<Document> documentsToNormalize;
+    private readonly Dictionary<string, int> termDocumentAppearances;
 
     private readonly TaskCompletionSource<int> tokenizationDoneTCS;
 
@@ -40,12 +41,13 @@ namespace DocumentClusteringCore.Orchestration.LocalThreads {
 
       generatedDocuments = new List<Document>(filepathsToTokenize.Count());
       documentsToNormalize = new Queue<Document>(filepathsToTokenize.Count());
+      termDocumentAppearances = new Dictionary<string, int>();
 
       tokenizationDoneTCS = new TaskCompletionSource<int>();
     }
 
-    public async Task ExecuteWorkAsync() {
-      subscriptions.Add(messageHub.DocumentGenerated
+    public virtual async Task ExecuteWorkAsync() {
+      subscriptions.Add(messageHub.DocumentTokenized
         .ObserveOn(Scheduler.Immediate)
         //.SubscribeOn(SynchronizationContext.Current) // TODO: Find out why this doesn't work
         .Subscribe(OnDocumentGenerated));
@@ -65,6 +67,16 @@ namespace DocumentClusteringCore.Orchestration.LocalThreads {
 
       generatedDocuments.Add(generatedDocument);
       documentsToNormalize.Enqueue(generatedDocument);
+      
+      foreach (var termKvp in generatedDocument.TermCounts) {
+        var actualCount = 0;
+        if (termDocumentAppearances.ContainsKey(termKvp.Key)) {
+          actualCount = termDocumentAppearances[termKvp.Key];
+        }
+
+        actualCount = actualCount + 1;
+        termDocumentAppearances[termKvp.Key] = actualCount;
+      }
 
       if (!filepathsToTokenize.Any()) {
         tokenizationDoneTCS.SetResult(0);
@@ -110,6 +122,15 @@ namespace DocumentClusteringCore.Orchestration.LocalThreads {
         }
 
         yield return (nodeId) => tokenizationDoneTCS.Task.ContinueWith(_ => false);
+
+        foreach (var node in workerNodes) {
+          yield return (nodeId) => {
+            var assignment = new ConfigureNormalizationAssignment(nodeId, generatedDocuments.Count(), termDocumentAppearances);
+            messageSink.PostConfigureNormalizationAssignment(assignment);
+
+            return Task.FromResult(true);
+          };
+        }
         
         while (documentsToNormalize.Any()) {
           var nextDocument = documentsToNormalize.Dequeue();

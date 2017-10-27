@@ -3,11 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.27004.2002
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DocumentClusteringCore", "DocumentClusteringCore\DocumentClusteringCore.csproj", "{748DBD61-34FF-4F94-B633-E4493C97A2A7}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DocumentClusteringCore", "DocumentClusteringCore\DocumentClusteringCore.csproj", "{748DBD61-34FF-4F94-B633-E4493C97A2A7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PorterStemmer", "PorterStemmer\PorterStemmer.csproj", "{53A36D21-9371-45FB-A9A4-DFC639486753}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PorterStemmer", "PorterStemmer\PorterStemmer.csproj", "{53A36D21-9371-45FB-A9A4-DFC639486753}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DocumentClusteringAgent", "DocumentClusteringAgent\DocumentClusteringAgent.csproj", "{F49E16EB-9B9C-4EC0-B3EA-04EA2460172F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DocumentClusteringAgent", "DocumentClusteringAgent\DocumentClusteringAgent.csproj", "{F49E16EB-9B9C-4EC0-B3EA-04EA2460172F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

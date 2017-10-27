@@ -5,7 +5,7 @@ using DocumentClusteringCore.Orchestration.Models;
 
 namespace DocumentClusteringCore.Messaging.InProcess {
   public class InProcessMessagingCenter : IMessageHub, IMessageSink {
-    public IObservable<Document> DocumentGenerated => documentGeneratedSubject;
+    public IObservable<Document> DocumentTokenized => documentGeneratedSubject;
     public IObservable<Document> DocumentNormalized => documentNormalizedSubject;
     public IObservable<WorkAssignment> WorkAssignemnts => assignmentsSubject;
     public IObservable<NodeAvailabilityChange> NodeAvailabilityChanges => availabilityChangesSubject;
@@ -68,6 +68,18 @@ namespace DocumentClusteringCore.Messaging.InProcess {
       }
 
       assignmentsSubject.OnNext(assignment);
+    }
+
+    public void PostConfigureNormalizationAssignment(ConfigureNormalizationAssignment assignment) {
+      if (assignment == null) {
+        throw new ArgumentNullException(nameof(assignment));
+      }
+
+      assignmentsSubject.OnNext(assignment);
+    }
+
+    public void Dispose() {
+      // NO-OP
     }
   }
 }

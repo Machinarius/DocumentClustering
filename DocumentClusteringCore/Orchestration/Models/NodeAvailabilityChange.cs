@@ -1,5 +1,5 @@
 ﻿namespace DocumentClusteringCore.Orchestration.Models {
-  public class NodeAvailabilityChange {
+  public class NodeAvailabilityChange : INodeMessage {
     public int NodeId { get; }
     public bool NodeAvailable { get; }
 

@@ -2,7 +2,7 @@
   "profiles": {
     "DocumentClusteringAgent": {
       "commandName": "Project",
-      "commandLineArgs": "TestFiles"
+      "commandLineArgs": "--files=TestFiles"
     }
   }
 }

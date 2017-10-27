@@ -77,11 +77,22 @@ namespace DocumentClusteringCore.Orchestration.LocalThreads {
         case ShutdownAssignment shutdown:
           ExecuteShutdown(shutdown);
           break;
+        case ConfigureNormalizationAssignment configuration:
+          ConfigureNormalization(configuration);
+          break;
         default:
           throw new InvalidOperationException("Did not recognize the assignment type: " + assignment.GetType());
       }
 
       PostAvailability(true);
+    }
+
+    private void ConfigureNormalization(ConfigureNormalizationAssignment configuration) {
+      if (configuration == null) {
+        throw new ArgumentNullException(nameof(configuration));
+      }
+
+      weightNormalizer.Configure(configuration.DocumentCount, configuration.TermDocumentAppearances);
     }
 
     private void ExecuteShutdown(ShutdownAssignment shutdown) {

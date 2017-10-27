@@ -10,7 +10,7 @@ using DocumentClusteringCore.SimilarityComparison;
 using DocumentClusteringCore.Tokenization;
 
 namespace DocumentClusteringCore.Orchestration.LocalThreads {
-  public class LocalThreadWorkerNodeFactory : IWorkerNodesLifecycleManager {
+  public class LocalThreadWorkerNodesLifecycleManager : IWorkerNodesLifecycleManager {
     private readonly IMessageHub messageHub;
     private readonly IMessageSink messageSink;
 
@@ -21,9 +21,9 @@ namespace DocumentClusteringCore.Orchestration.LocalThreads {
 
     private IEnumerable<LocalThreadWorkerNode> nodes;
 
-    public LocalThreadWorkerNodeFactory(IMessageHub messageHub, IMessageSink messageSink, 
-                                        IDocumentTokenizer documentTokenizer, IWeightNormalizer weightNormalizer, 
-                                        ISimilarityComparer similarityComparer, Options options) {
+    public LocalThreadWorkerNodesLifecycleManager(IMessageHub messageHub, IMessageSink messageSink,
+                                                  IDocumentTokenizer documentTokenizer, IWeightNormalizer weightNormalizer,
+                                                  ISimilarityComparer similarityComparer, Options options) {
       this.messageHub = messageHub ?? throw new ArgumentNullException(nameof(messageHub));
       this.messageSink = messageSink ?? throw new ArgumentNullException(nameof(messageSink));
       this.documentTokenizer = documentTokenizer ?? throw new ArgumentNullException(nameof(documentTokenizer));

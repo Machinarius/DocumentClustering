@@ -1,14 +1,15 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using DocumentClusteringCore.Configuration;
 using DocumentClusteringCore.Messaging.InProcess;
+using DocumentClusteringCore.Messaging.MPI;
 using DocumentClusteringCore.Normalization.Default;
 using DocumentClusteringCore.Orchestration;
 using DocumentClusteringCore.Orchestration.LocalThreads;
+using DocumentClusteringCore.Orchestration.MPI;
 using DocumentClusteringCore.SimilarityComparison.Euclidean;
 using DocumentClusteringCore.Stemming.Default;
 using DocumentClusteringCore.TermFiltering.Default;
@@ -25,41 +26,52 @@ namespace DocumentClusteringAgent {
     }
 
     public static async Task AsyncMain(string[] args) {
-      if (args.Length < 1) {
-        Console.WriteLine($"Please specify the path to the directory or file to analyze as an argument");
+      var consoleOptions = new ConsoleOptions();
+      var optionsAreValid = CommandLine.Parser.Default.ParseArguments(args, consoleOptions);
+
+      consoleOptions.FilesToRead = consoleOptions.FilesToRead?.Select(Path.GetFullPath).ToList();
+
+      if (!optionsAreValid || consoleOptions.ShowHelp || 
+          !consoleOptions.FilesToRead.All(x => File.Exists(x) || Directory.Exists(x))) {
+        ShowHelp(consoleOptions);
+
         return;
       }
 
-      var pathToTarget = Path.GetFullPath(args[0]);
-      if (!File.Exists(pathToTarget) && !Directory.Exists(pathToTarget)) {
-        Console.WriteLine($"ERROR: No file or directory was found at '{pathToTarget}'");
-        Console.ReadKey();
-        return;
+      var filesToRead = consoleOptions.FilesToRead;
+      if (filesToRead.Count == 1) {
+        var directoryName = filesToRead[0];
+        if (Directory.Exists(directoryName)) {
+          filesToRead = Directory.GetFiles(directoryName).ToList();
+        }
       }
 
-      IEnumerable<string> targetFiles;
-      var targetIsDirectory = (File.GetAttributes(pathToTarget) & FileAttributes.Directory) == FileAttributes.Directory;
-      if (targetIsDirectory) {
-        targetFiles = Directory.GetFiles(pathToTarget).Select(Path.GetFullPath).ToArray();
-      } else {
-        targetFiles = new[] { pathToTarget }.Select(Path.GetFullPath).ToArray();
-      }
-
-      var options = new Options(0, targetFiles);
+      var options = new Options(consoleOptions.Threads, filesToRead);
 
       var containerRules = Rules.Default
         .WithConcreteTypeDynamicRegistrations()
         .WithAutoConcreteTypeResolution();
 
       var diContainer = new Container(containerRules);
-      diContainer.UseInProcessMessaging();
+      diContainer.RegisterInstance(options);
+
       diContainer.UseDefaultTokenization();
       diContainer.UseCachedPorterStemming();
-      diContainer.UseLocalThreadWorkers();
       diContainer.UseDefaultTermFiltering();
       diContainer.UseEuclideanSimilarityComparison();
       diContainer.UseDefaultWeightNormalization();
-      diContainer.RegisterInstance(options);
+
+      IDisposable mpiEnvironment = null;
+
+      if (consoleOptions.UseMPIEngine) {
+        mpiEnvironment = new MPI.Environment(ref args);
+
+        diContainer.UseMPIMessaging();
+        diContainer.UseMPIOrchestration();
+      } else {
+        diContainer.UseInProcessMessaging();
+        diContainer.UseLocalThreadWorkers();
+      }
 
       var worker = diContainer.Resolve<IWorkOrchestrator>();
       var stopWatch = new Stopwatch();
@@ -68,9 +80,18 @@ namespace DocumentClusteringAgent {
       await worker.ExecuteWorkAsync();
       stopWatch.Stop();
 
+      if (mpiEnvironment != null) {
+        mpiEnvironment.Dispose();
+      }
+
       Console.WriteLine($"Time ellapsed: {stopWatch.Elapsed.TotalSeconds} seconds");
       
       Console.ReadKey();
+    }
+
+    private static void ShowHelp(ConsoleOptions consoleOptions) {
+      var helpText = CommandLine.Text.HelpText.AutoBuild(consoleOptions);
+      Console.WriteLine(helpText);
     }
   }
 }
